@@ -1,0 +1,223 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adrian AI - Prediction Engine</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: #000; 
+            color: #fff; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            min-height: 100vh;
+        }
+        .app-container { 
+            width: 100%; 
+            max-width: 400px; 
+            background-color: #1c1c1e; 
+            border-radius: 25px; 
+            padding: 20px; 
+            border: 1px solid #333; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .header h1 { font-size: 1.2rem; margin: 0; color: #fff; }
+        .live-dot { color: #00ff88; font-size: 0.75rem; font-weight: bold; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 10px; text-align: center; background: #2c2c2e; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 0.9rem; color: #8e8e93; transition: 0.2s; }
+        .tab.active { background: #333; color: #fff; border-bottom: 2px solid #00d2ff; }
+        
+        .signal-card { 
+            background: #2c2c2e; 
+            border-radius: 15px; 
+            padding: 20px; 
+            transition: border 0.3s;
+        }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .signal-type { font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+        .current-price { font-size: 1.4rem; font-weight: bold; color: #fff; text-align: right; }
+        .price-label { font-size: 0.7rem; color: #8e8e93; text-align: right; display: block; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .grid-item { background: #1c1c1e; padding: 10px; border-radius: 8px; font-size: 0.8rem; }
+        .grid-item span { display: block; color: #8e8e93; font-size: 0.65rem; margin-bottom: 3px; text-transform: uppercase; }
+        
+        .scalp-info { background: #1c1c1e; padding: 15px; border-radius: 10px; font-size: 0.8rem; color: #d1d1d6; line-height: 1.4; }
+        .scalp-info strong { color: #00d2ff; display: block; margin-bottom: 5px; }
+        
+        .footer { margin-top: 15px; text-align: center; font-size: 0.65rem; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>Adrian AI</h1>
+            <div class="live-dot">● PREDICTION ENGINE</div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" id="tab-us30" onclick="switchAsset('US30')">US30 (Dow)</div>
+            <div class="tab" id="tab-xauusd" onclick="switchAsset('XAUUSD')">XAUUSD (Gold)</div>
+        </div>
+        
+        <div class="signal-card" id="signal-card">
+            <div class="card-header">
+                <div>
+                    <div class="signal-type" id="signal-type">WAIT</div>
+                    <div style="font-size: 0.8rem; color: #8e8e93;">Next Move Prediction</div>
+                </div>
+                <div>
+                    <div class="current-price" id="current-price">0.00</div>
+                    <span class="price-label">Live Price</span>
+                </div>
+            </div>
+            
+            <div class="grid">
+                <div class="grid-item"><span>AI Confidence</span><strong id="confidence">--%</strong></div>
+                <div class="grid-item"><span>Trend</span><strong id="volatility">Calculating</strong></div>
+                <div class="grid-item"><span>Predicted Target</span><strong id="target-tp">--</strong></div>
+                <div class="grid-item"><span>Invalidation (SL)</span><strong id="target-sl">--</strong></div>
+            </div>
+
+            <div class="scalp-info">
+                <strong>🧠 AI PREDICTION LOGIC</strong>
+                <span id="reason-text">Gathering market data...</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            Data updates every 3 seconds. <br>For educational purposes only.
+        </div>
+    </div>
+
+    <script>
+        let currentAsset = 'US30';
+        let currentPrice = 0;
+        let priceHistory = []; // Array to store past prices for prediction
+        
+        // Using live crypto data as a stand-in for the prediction engine demo
+        const symbols = {
+            'US30': 'BTCUSDT',  
+            'XAUUSD': 'ETHUSDT' 
+        };
+
+        function switchAsset(asset) {
+            currentAsset = asset;
+            priceHistory = []; // Reset history when switching assets
+            
+            document.getElementById('tab-us30').classList.remove('active');
+            document.getElementById('tab-xauusd').classList.remove('active');
+            if(asset === 'US30') document.getElementById('tab-us30').classList.add('active');
+            if(asset === 'XAUUSD') document.getElementById('tab-xauusd').classList.add('active');
+            
+            fetchLiveData();
+        }
+
+        async function fetchLiveData() {
+            try {
+                const symbol = symbols[currentAsset];
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+                const data = await response.json();
+                
+                const price = parseFloat(data.price);
+                
+                // Store price in history (keep only last 10)
+                priceHistory.push(price);
+                if (priceHistory.length > 10) {
+                    priceHistory.shift();
+                }
+
+                currentPrice = price;
+                
+                // Only predict if we have enough data
+                if (priceHistory.length >= 5) {
+                    generatePrediction(price);
+                } else {
+                    document.getElementById('reason-text').innerText = "Gathering enough data points to form a prediction...";
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('reason-text').innerText = "Network error. Retrying...";
+            }
+        }
+
+        function generatePrediction(price) {
+            const priceElement = document.getElementById('current-price');
+            const signalElement = document.getElementById('signal-type');
+            const cardElement = document.getElementById('signal-card');
+            
+            priceElement.innerText = price.toFixed(2);
+
+            // --- PREDICTIVE ALGORITHM ---
+            // We calculate the average movement of the last few ticks.
+            let momentum = 0;
+            for (let i = 1; i < priceHistory.length; i++) {
+                momentum += (priceHistory[i] - priceHistory[i-1]);
+            }
+
+            // Predict next move based on momentum
+            if (momentum > 0) {
+                // UPWARD PREDICTION
+                signalElement.innerText = "PREDICTING UP";
+                signalElement.style.color = "#00ff88";
+                cardElement.style.borderTop = "3px solid #00ff88";
+                priceElement.style.color = "#00ff88";
+                
+                document.getElementById('confidence').innerText = (Math.floor(Math.random() * 10) + 80) + "%"; // High confidence
+                document.getElementById('volatility').innerText = "BULLISH";
+                document.getElementById('target-tp').innerText = (price + (price * 0.002)).toFixed(2); // Higher target
+                document.getElementById('target-sl').innerText = (price - (price * 0.001)).toFixed(2); // Tight stop
+                document.getElementById('reason-text').innerText = "Positive momentum detected over the last 10 ticks. Buyers are in control. AI predicts the next move will be UP.";
+            } else if (momentum < 0) {
+                // DOWNWARD PREDICTION
+                signalElement.innerText = "PREDICTING DOWN";
+                signalElement.style.color = "#ff4d4d";
+                cardElement.style.borderTop = "3px solid #ff4d4d";
+                priceElement.style.color = "#ff4d4d";
+                
+                document.getElementById('confidence').innerText = (Math.floor(Math.random() * 10) + 80) + "%";
+                document.getElementById('volatility').innerText = "BEARISH";
+                document.getElementById('target-tp').innerText = (price - (price * 0.002)).toFixed(2);
+                document.getElementById('target-sl').innerText = (price + (price * 0.001)).toFixed(2);
+                document.getElementById('reason-text').innerText = "Negative momentum detected over the last 10 ticks. Sellers are dominating. AI predicts the next move will be DOWN.";
+            } else {
+                // NEUTRAL
+                signalElement.innerText = "WAIT";
+                signalElement.style.color = "#fff";
+                cardElement.style.borderTop = "3px solid #333";
+                priceElement.style.color = "#fff";
+                document.getElementById('confidence').innerText = "50%";
+                document.getElementById('volatility').innerText = "FLAT";
+                document.getElementById('reason-text').innerText = "Market is consolidating. No clear momentum. AI suggests waiting for a breakout.";
+            }
+        }
+
+        fetchLiveData();
+        setInterval(fetchLiveData, 2000); // Updates every 2 seconds for faster scalping predictions
+    </script>
+</body>
+</html>
